@@ -19,7 +19,11 @@ class FlickityComponent extends Component {
   }
 
   static getDerivedStateFromProps(props, state) {
-    const cellCount = React.Children.count(props.children);
+    let cellCount = React.Children.count(props.children);
+    if(cellCount === 1 && props.children.props.children) {
+      cellCount = React.Children.count(props.children.props.children)
+    }
+
     if (cellCount !== state.cellCount)
       return { flickityReady: false, cellCount };
     return null;
@@ -31,14 +35,14 @@ class FlickityComponent extends Component {
       options: { draggable, initialIndex },
       reloadOnUpdate,
     } = this.props;
-    const { flickityReady } = this.state;
+    const { flickityReady, cellCount } = this.state;
     if (reloadOnUpdate || (!prevState.flickityReady && flickityReady)) {
       this.flkty.deactivate();
       this.flkty.selectedIndex = initialIndex || 0;
       this.flkty.options.draggable =
         draggable === undefined
           ? children
-            ? children.length > 1
+            ? cellCount > 1
             : false
           : draggable;
       this.flkty.activate();
@@ -67,17 +71,22 @@ class FlickityComponent extends Component {
     else imagesloaded(this.carousel, setFlickityToReady);
   }
 
-  renderPortal() {
+  renderPortal(children) {
     if (!this.carousel) return null;
     const mountNode = this.carousel.querySelector('.flickity-slider');
     if (mountNode) {
-      const element = createPortal(this.props.children, mountNode);
-      setTimeout(() => this.setReady(), 0);
+      const element = createPortal(children, mountNode);
+      setTimeout(() => this.setReady(), 10);
       return element;
     }
   }
 
   render() {
+
+    const { cellCount } = this.state
+
+    const usableChildren = cellCount === 1 ? this.props.children.props.children : this.props.children
+
     return React.createElement(
       this.props.elementType,
       {
@@ -86,7 +95,7 @@ class FlickityComponent extends Component {
           this.carousel = c;
         },
       },
-      this.props.static ? this.props.children : this.renderPortal()
+      this.props.static ? usableChildren : this.renderPortal(usableChildren)
     );
   }
 }
